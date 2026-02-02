@@ -26,7 +26,6 @@ make distclean
 cp ../config-nuttx-12.8.0 ../nuttx/.config
 make
 notes
- - if you want timer interrupts, use config-nuttx-12.8.0-ti
  - for LN: platform/board to /home/laur/lucru/rtos/apps/platform/dummy
 board already exists but is not a symbolic link
 remove
