@@ -1,0 +1,73 @@
+skSoC: a RISC-V Hazard3 based SoC skeleton
+====
+
+-1.
+Download the latest RISCV GCC toolchain prebuilt by xPack for nuttx and add .../riscv-none-elf-gcc/bin to PATH
+RUN mkdir riscv-none-elf-gcc && \
+curl -s -L "https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases/download/v13.2.0-2/xpack-riscv-none-elf-gcc-13.2.0-2-linux-x64.tar.gz" \
+| tar -C riscv-none-elf-gcc --strip-components 1 -xz
+
+0.
+download nuttx 12.8.0 os and apps from https://nuttx.apache.org/download
+extract archives
+cd nuttx
+patch -p1 <../nuttx-patch-12.8.0.patch
+cd ../apps
+patch -p1 < ../nuttx-apps-patch-12.8.0.patch
+cp ../smp_main.c testing/smp
+note - this patches were generated
+with instructions similar to the rlsoc-nuttx repository
+
+1. config nuttx
+cd -
+rm -rf .config
+make distclean
+./tools/configure.sh rv-virt:nsh
+cp ../config-nuttx-12.8.0 ../nuttx/.config
+make
+notes
+ - if you want timer interrupts, use config-nuttx-12.8.0-ti
+ - for LN: platform/board to /home/laur/lucru/rtos/apps/platform/dummy
+board already exists but is not a symbolic link
+remove
+rm -rf ../apps/platform/board
+
+2. wait until the following error
+LD: nuttx
+riscv-none-elf-ld: /home/laur/lucru/cn/riscv/tmp/nuttx/staging/libapps.a(smp_main.c.home.laur.lucru.cn.riscv.tmp.apps.testing.smp_1.o): in function `smp_main':
+/home/laur/lucru/cn/riscv/tmp/apps/testing/smp/smp_main.c:513:(.text.smp_main+0x614): undefined reference to `core_main'
+
+3. work around this error
+cd ../apps/benchmarks/coremark
+rm -rf coremark
+tar -xf ../../../coremark-nuttx.tgz
+cd -
+make clean
+make
+
+4. simulate in verilator
+cd ../hazard3
+- in Makefile and run.tcl, set
+  for single core example_soc.v
+  for dual core example_soc-dual.v
+  and adjust N_HARTS accordingly
+- please see flags in define.vh and set SIM_MODE
+./run-nuttx2.sh
+
+5. implementation on tang nano 20k
+comment SIM_MODE in define.vh
+make gwsynth
+if FAT32_SD is in define.vh
+  cp initmem_gen2/initmem.bin /media/sdfolder
+else
+  // here /dev/sdb is your sd device node
+  dd if=initmem_gen2/initmem.bin of=/dev/sdb bs=512 seek=0 && sync
+openFPGALoader --board tangnano20k impl/pnr/project.fs
+
+Resource	Usage	Utilization
+Logic	7863(6866 LUT, 997 ALU) / 20736	38%
+Register	3081 / 15915	20%
+  --Register as Latch	0 / 15915	0%
+  --Register as FF	3081 / 15915	20%
+BSRAM	28 / 46	61%
+
